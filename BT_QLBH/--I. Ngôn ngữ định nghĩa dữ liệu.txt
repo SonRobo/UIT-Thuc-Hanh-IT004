@@ -1,0 +1,122 @@
+--I. Ngôn ngữ định nghĩa dữ liệu (Data Definition Language):
+--2.	Thêm vào thuộc tính GHICHU có kiểu dữ liệu varchar(20) cho quan hệ SANPHAM.
+ALTER TABLE SANPHAM
+ADD GHICHU VARCHAR(20)
+--3.	Thêm vào thuộc tính LOAIKH có kiểu dữ liệu là tinyint cho quan hệ KHACHHANG.
+ALTER TABLE KHACHHANG
+ADD LOAIKH TINYINT
+--4.	Sửa kiểu dữ liệu của thuộc tính GHICHU trong quan hệ SANPHAM thành varchar(100).
+ALTER TABLE SANPHAM
+ALTER COLUMN GHICHU VARCHAR(100)
+--5.	Xóa thuộc tính GHICHU trong quan hệ SANPHAM.
+ALTER TABLE SANPHAM
+DROP COLUMN GHICHU
+--6.	Làm thế nào để thuộc tính LOAIKH trong quan hệ KHACHHANG có thể lưu các giá trị là: “Vang lai”, “Thuong xuyen”, “Vip”, …
+ALTER TABLE KHACHHANG
+ALTER COLUMN LOAIKH VARCHAR(50)
+--7.	Đơn vị tính của sản phẩm chỉ có thể là (“cay”,”hop”,”cai”,”quyen”,”chuc”)
+ALTER TABLE SANPHAM
+ADD CONSTRAINT RB_DVT CHECK(DVT IN ('cay','hop','cai','quyen','chuc'))
+--8.	Giá bán của sản phẩm từ 500 đồng trở lên.
+ALTER TABLE SANPHAM
+ADD CONSTRAINT RB_GIA_SP_TREN_500 CHECK(GIA > 500)
+--9.	Mỗi lần mua hàng, khách hàng phải mua ít nhất 1 sản phẩm.
+ALTER TABLE CTHD
+ADD CONSTRAINT RB_MUA_IT_NHAT_1_SP CHECK(SL >= 1)
+--10.	Ngày khách hàng đăng ký là khách hàng thành viên phải lớn hơn ngày sinh của người đó.
+ALTER TABLE KHACHHANG
+ADD CONSTRAINT RB_NGAY_DKI_TVIEN CHECK(NGDK > NGSINH)
+--11.	Ngày mua hàng (NGHD) của một khách hàng thành viên sẽ lớn hơn hoặc bằng ngày khách hàng đó đăng ký thành viên (NGDK).
+CREATE TRIGGER TG_NGHD ON HOADON
+INSTEAD OF INSERT
+AS 
+BEGIN 
+	DECLARE @NGHD SMALLDATETIME, @MAKH CHAR(4), @NGDK SMALLDATETIME
+	SELECT @NGHD = NGHD, @MAKH = MAKH
+	FROM INSERTED
+	SELECT @NGDK = NGDK
+	FROM KHACHHANG
+	WHERE MAKH = @MAKH
+	IF @NGDK < @NGHD 
+	BEGIN
+		PRINT 'THEM HOA DON THANH CONG'
+		INSERT INTO HOADON
+		SELECT * FROM INSERTED
+	END
+	ELSE
+	BEGIN
+		PRINT 'NGHD KO HOP LE'
+	END
+END
+DROP TRIGGER TG_NGHD
+SELECT * FROM HOADON
+
+--12.	Ngày bán hàng (NGHD) của một nhân viên phải lớn hơn hoặc bằng ngày nhân viên đó vào làm.
+CREATE TRIGGER TG_NGHD_NV ON HOADON
+FOR INSERT
+AS 
+BEGIN 
+	DECLARE @NGHD SMALLDATETIME, @MANV CHAR(4), @NGVL SMALLDATETIME
+	SELECT @NGHD = NGHD, @MANV = MANV
+	FROM INSERTED
+	SELECT @NGVL = NGVL
+	FROM NHANVIEN
+	WHERE MANV = @MANV
+	IF @NGVL > @NGHD 
+	BEGIN
+		PRINT 'NGHD KO HOP LE'
+		ROLLBACK TRANSACTION
+	END
+	ELSE
+	BEGIN
+		PRINT 'THEM HOA DON THANH CONG'
+	END
+END
+--13.	Mỗi một hóa đơn phải có ít nhất một chi tiết hóa đơn.
+CREATE TRIGGER TG_HD_COCTHD ON HOADON
+FOR INSERT
+AS
+BEGIN
+	DECLARE @SOHD INT, @CNT INT
+	SELECT @SOHD = SOHD
+	FROM INSERTED
+	SELECT @CNT = (
+	SELECT COUNT(*)
+	FROM CTHD WHERE SOHD = @SOHD
+	)
+	IF @CNT = 0
+	BEGIN
+		PRINT 'hóa đơn phải có ít nhất một chi tiết hóa đơn'
+		ROLLBACK TRANSACTION
+	END
+	ELSE
+	BEGIN 
+		PRINT 'THEM HOA DON THANH CONG'
+	END
+END
+--14.	Trị giá của một hóa đơn là tổng thành tiền (số lượng*đơn giá) của các chi tiết thuộc hóa đơn đó.
+CREATE TRIGGER TG_HD_TRIGIA
+ON CTHD
+AFTER INSERT
+AS
+BEGIN
+	DECLARE @SOHD INT, @TRIGIA MONEY, @SUM MONEY
+	SELECT @SOHD = SOHD
+	FROM INSERTED
+	SELECT @TRIGIA = TRIGIA
+	FROM HOADON
+	WHERE SOHD = @SOHD
+	SELECT @SUM = SUM(CT.SL * SP.GIA)
+	FROM CTHD CT
+	JOIN SANPHAM SP ON CT.MASP = SP.MASP
+	WHERE SOHD = @SOHD
+	IF @TRIGIA != @SUM
+	BEGIN
+		PRINT 'Trị giá của hóa đơn phải bằng tổng thành tiền của các chi tiết thuộc hóa đơn.'
+		ROLLBACK TRANSACTION
+	END
+	ELSE
+	BEGIN 
+		PRINT 'THEM HOA DON THANH CONG'
+	END
+END
