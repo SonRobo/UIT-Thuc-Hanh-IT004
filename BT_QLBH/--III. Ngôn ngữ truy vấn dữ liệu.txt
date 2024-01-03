@@ -1,0 +1,374 @@
+--III. Ngôn ngữ truy vấn dữ liệu:
+--1.	In ra danh sách các sản phẩm (MASP,TENSP) do “Trung Quoc” sản xuất.
+select MASP,TENSP
+from SANPHAM
+where NUOCSX = 'Trung Quoc'
+--2.	In ra danh sách các sản phẩm (MASP, TENSP) có đơn vị tính là “cay”, ”quyen”.
+select MASP,TENSP
+from SANPHAM
+where DVT = 'cay' or DVT = 'quyen'
+--3.	In ra danh sách các sản phẩm (MASP,TENSP) có mã sản phẩm bắt đầu là “B” và kết thúc là “01”.
+select MASP,TENSP
+from SANPHAM
+where MASP like '%b%01'
+--4.	In ra danh sách các sản phẩm (MASP,TENSP) do “Trung Quốc” sản xuất có giá từ 30.000 đến 40.000.
+select MASP,TENSP
+from SANPHAM
+where NUOCSX = 'Trung Quoc' and (GIA between 30000 and 40000)
+--5.	In ra danh sách các sản phẩm (MASP,TENSP) do “Trung Quoc” hoặc “Thai Lan” sản xuất có giá từ 30.000 đến 40.000.
+select MASP,TENSP
+from SANPHAM
+where (NUOCSX = 'Trung Quoc' or NUOCSX = 'Thai Lan') and (GIA between 30000 and 40000)
+--6.	In ra các số hóa đơn, trị giá hóa đơn bán ra trong ngày 1/1/2007 và ngày 2/1/2007.
+select SOHD,TRIGIA
+from HOADON 
+where NGHD in ('1/1/2007','2/1/2007') 
+--7.	In ra các số hóa đơn, trị giá hóa đơn trong tháng 1/2007, sắp xếp theo ngày (tăng dần) và trị giá của hóa đơn (giảm dần).
+select SOHD,TRIGIA
+from HOADON 
+where format(NGHD, 'M-yyyy') = '1/2007'
+order by NGHD asc, TRIGIA desc
+--8.	In ra danh sách các khách hàng (MAKH, HOTEN) đã mua hàng trong ngày 1/1/2007.
+select H.MAKH, HOTEN
+from KHACHHANG K
+join HOADON H
+on K.MAKH = h.MAKH
+where H.NGHD = '1/1/2007'
+--9.	In ra số hóa đơn, trị giá các hóa đơn do nhân viên có tên “Nguyen Van B” lập trong ngày 28/10/2006.
+select H.SOHD, TRIGIA
+from HOADON H
+join NHANVIEN N
+on N.MANV = H.MANV
+where N.HOTEN = 'Nguyen Van B' and H.NGHD = '28/10/2006'
+--10.	In ra danh sách các sản phẩm (MASP,TENSP) được khách hàng có tên “Nguyen Van A” mua trong tháng 10/2006.
+select CH.MASP, SP.TENSP
+from CTHD CH
+join SANPHAM SP
+on CH.MASP = SP.MASP
+where CH.SOHD in (
+	select HD.SOHD
+	from HOADON HD 
+	join KHACHHANG KH
+	on HD.MAKH = KH.MAKH
+	where KH.HOTEN = 'Nguyen Van A' and year(HD.NGHD) = 2006 and month(HD.NGHD) = 10
+)
+--11.	Tìm các số hóa đơn đã mua sản phẩm có mã số “BB01” hoặc “BB02”.
+select  SOHD 
+from CTHD
+where MASP = 'BB01'
+union
+select  SOHD 
+from CTHD
+where MASP = 'BB02'
+--12.	Tìm các số hóa đơn đã mua sản phẩm có mã số “BB01” hoặc “BB02”, mỗi sản phẩm mua với số lượng từ 10 đến 20.
+SELECT DISTINCT SOHD 
+FROM CTHD 
+WHERE MASP IN ('BB01', 'BB02') AND SL BETWEEN 10 AND 20
+--13.	Tìm các số hóa đơn mua cùng lúc 2 sản phẩm có mã số “BB01” và “BB02”, mỗi sản phẩm mua với số lượng từ 10 đến 20.
+SELECT SOHD 
+FROM CTHD 
+WHERE MASP IN ('BB01', 'BB02') AND SL BETWEEN 10 AND 20
+GROUP BY SOHD 
+HAVING COUNT(DISTINCT MASP) = 2
+--14.	In ra danh sách các sản phẩm (MASP,TENSP) do “Trung Quoc” sản xuất hoặc các sản phẩm được bán ra trong ngày 1/1/2007.
+SELECT MASP, TENSP
+FROM SANPHAM 
+WHERE NUOCSX = 'Trung Quoc' OR MASP IN (
+	SELECT DISTINCT CT.MASP 
+	FROM CTHD CT JOIN HOADON HD
+	ON CT.SOHD = HD.SOHD
+	WHERE NGHD = '01/01/2007'
+)
+--15.	In ra danh sách các sản phẩm (MASP,TENSP) không bán được.
+SELECT MASP, TENSP
+FROM SANPHAM 
+WHERE MASP NOT IN (
+	SELECT DISTINCT CT.MASP
+	FROM CTHD CT
+)
+--16.	In ra danh sách các sản phẩm (MASP,TENSP) không bán được trong năm 2006.
+SELECT MASP, TENSP
+FROM SANPHAM 
+WHERE MASP NOT IN (
+	SELECT DISTINCT CT.MASP
+	FROM CTHD CT
+	JOIN HOADON HD ON CT.SOHD = HD.SOHD AND YEAR(HD.NGHD) = 2006
+)
+--17.	In ra danh sách các sản phẩm (MASP,TENSP) do “Trung Quoc” sản xuất không bán được trong năm 2006.
+SELECT MASP, TENSP
+FROM SANPHAM 
+WHERE NUOCSX = 'Trung Quoc' AND MASP NOT IN (
+	SELECT DISTINCT CT.MASP
+	FROM CTHD CT
+	JOIN HOADON HD ON CT.SOHD = HD.SOHD AND YEAR(HD.NGHD) = 2006
+)
+--18.	Tìm số hóa đơn đã mua tất cả các sản phẩm do Singapore sản xuất.
+SELECT CT.SOHD
+FROM CTHD CT JOIN SANPHAM SP
+ON CT.MASP = SP.MASP
+WHERE NUOCSX = 'Singapore'
+GROUP BY CT.SOHD 
+HAVING COUNT(DISTINCT CT.MASP) = (
+	SELECT COUNT(MASP) 
+	FROM SANPHAM 
+	WHERE NUOCSX = 'Singapore'
+)
+--19.	Tìm số hóa đơn trong năm 2006 đã mua ít nhất tất cả các sản phẩm do Singapore sản xuất.
+SELECT SOHD
+FROM HOADON
+WHERE YEAR(NGHD) = 2006 AND SOHD IN(
+	SELECT CT.SOHD
+	FROM CTHD CT JOIN SANPHAM SP
+	ON CT.MASP = SP.MASP
+	WHERE NUOCSX = 'Singapore'
+	GROUP BY CT.SOHD 
+	HAVING COUNT(DISTINCT CT.MASP) = (
+		SELECT COUNT(MASP) 
+		FROM SANPHAM 
+		WHERE NUOCSX = 'Singapore'
+	)	
+)
+--5. Bài tập 5
+--Sinh viên hoàn thành Phần III bài tập QuanLyGiaoVu từ câu 11 đến câu 18.
+--11.	Tìm họ tên giáo viên dạy môn CTRR cho cả hai lớp “K11” và “K12” trong cùng học kỳ 1 năm 2006.
+SELECT HOTEN 
+FROM GIAOVIEN 
+WHERE MAGV IN (
+	SELECT MAGV 
+	FROM GIANGDAY 
+	WHERE MAMH = 'CTRR' AND MALOP IN ('K11', 'K12') AND HOCKY = 1 AND NAM = 2006
+	GROUP BY MAGV 
+	HAVING COUNT(DISTINCT MALOP) = 2
+)
+--12.	Tìm những học viên (mã học viên, họ tên) thi không đạt môn CSDL ở lần thi thứ 1 nhưng chưa thi lại môn này.
+SELECT MAHV, HO + ' ' + TEN AS HOTEN 
+FROM HOCVIEN 
+WHERE MAHV IN (
+	SELECT MAHV 
+	FROM KETQUATHI A
+	WHERE NOT EXISTS (
+		SELECT 1
+		FROM KETQUATHI B 
+		WHERE A.MAHV = B.MAHV AND A.MAMH = B.MAMH AND A.LANTHI < B.LANTHI
+	) AND MAMH = 'CSDL' AND LANTHI = 1 AND KQUA = 'Khong Dat'
+)
+--13.	Tìm giáo viên (mã giáo viên, họ tên) không được phân công giảng dạy bất kỳ môn học nào.
+SELECT MAGV, HOTEN 
+FROM GIAOVIEN 
+WHERE MAGV NOT IN (
+	SELECT DISTINCT MAGV 
+	FROM GIANGDAY
+)
+--14.	Tìm giáo viên (mã giáo viên, họ tên) không được phân công giảng dạy bất kỳ môn học nào thuộc khoa giáo viên đó phụ trách.
+SELECT MAGV, HOTEN 
+FROM GIAOVIEN 
+WHERE MAGV NOT IN (
+	SELECT GD.MAGV
+	FROM GIANGDAY GD JOIN GIAOVIEN GV 
+	ON GD.MAGV = GV.MAGV JOIN MONHOC MH
+	ON GD.MAMH = MH.MAMH
+	WHERE GV.MAKHOA = MH.MAKHOA
+)
+--15.	Tìm họ tên các học viên thuộc lớp “K11” thi một môn bất kỳ quá 3 lần vẫn “Khong dat” hoặc thi lần thứ 2 môn CTRR được 5 điểm.
+SELECT HO + ' ' + TEN AS HOTEN 
+FROM HOCVIEN
+WHERE MAHV IN (
+	SELECT MAHV 
+	FROM KETQUATHI A
+	WHERE LEFT(MAHV, 3) = 'K11' AND ((
+		NOT EXISTS (
+			SELECT 1 
+			FROM KETQUATHI B 
+			WHERE A.MAHV = B.MAHV AND A.MAMH = B.MAMH AND A.LANTHI < B.LANTHI
+		)  AND LANTHI = 3 AND KQUA = 'Khong Dat'
+	) OR MAMH = 'CTRR' AND LANTHI = 2 AND DIEM = 5)
+)
+--16.	Tìm họ tên giáo viên dạy môn CTRR cho ít nhất hai lớp trong cùng một học kỳ của một năm học.
+SELECT HOTEN 
+FROM GIAOVIEN 
+WHERE MAGV IN (
+	SELECT MAGV 
+	FROM GIANGDAY 
+	WHERE MAMH = 'CTRR'
+	GROUP BY MAGV, HOCKY, NAM 
+	HAVING COUNT(MALOP) >= 2
+)
+--17.	Danh sách học viên và điểm thi môn CSDL (chỉ lấy điểm của lần thi sau cùng).
+SELECT HV.MAHV, HO + ' ' + TEN AS HOTEN, DIEM 
+FROM HOCVIEN HV JOIN (
+	SELECT MAHV, DIEM 
+	FROM KETQUATHI A
+	WHERE NOT EXISTS (
+		SELECT 1 
+		FROM KETQUATHI B 
+		WHERE A.MAHV = B.MAHV AND A.MAMH = B.MAMH AND A.LANTHI < B.LANTHI
+	) AND MAMH = 'CSDL'
+) DIEM_CSDL
+ON HV.MAHV = DIEM_CSDL.MAHV
+--18.	Danh sách học viên và điểm thi môn “Co So Du Lieu” (chỉ lấy điểm cao nhất của các lần thi).
+SELECT HV.MAHV, HO + ' ' + TEN AS HOTEN, DIEM 
+FROM HOCVIEN HV JOIN (
+	SELECT MAHV, MAX(DIEM) AS DIEM FROM KETQUATHI 
+	WHERE MAMH IN (
+		SELECT MAMH FROM MONHOC 
+		WHERE TENMH = 'Co So Du Lieu'
+	) 
+	GROUP BY MAHV, MAMH
+) DIEM_CSDL_MAX
+ON HV.MAHV = DIEM_CSDL_MAX.MAHV
+--20.	Có bao nhiêu hóa đơn không phải của khách hàng đăng ký thành viên mua?
+SELECT COUNT(*) 
+FROM HOADON
+WHERE MAKH NOT IN(
+	SELECT MAKH FROM KHACHHANG 
+	WHERE KHACHHANG.MAKH = HOADON.MAKH
+)
+--21.	Có bao nhiêu sản phẩm khác nhau được bán ra trong năm 2006.
+SELECT SUM(DISTINCT MASP)
+FROM CTHD 
+WHERE SOHD IN(
+SELECT SOHD 
+FROM HOADON 
+WHERE YEAR (NGHD)=2006)
+--22.	Cho biết trị giá hóa đơn cao nhất, thấp nhất là bao nhiêu ?
+SELECT MAX(TRIGIA) AS GIAMAX, MIN(TRIGIA) AS GIAMIN
+FROM HOADON
+--23.	Trị giá trung bình của tất cả các hóa đơn được bán ra trong năm 2006 là bao nhiêu?
+SELECT AVG(TRIGIA) AS TRUNGBINH
+FROM HOADON 
+WHERE YEAR(NGHD)=2006
+--24.	Tính doanh thu bán hàng trong năm 2006.
+SELECT SUM(TRIGIA) 
+FROM HOADON 
+WHERE YEAR(NGHD) =2006
+--25.	Tìm số hóa đơn có trị giá cao nhất trong năm 2006.
+SELECT SOHD
+FROM HOADON
+WHERE TRIGIA=(
+SELECT MAX(TRIGIA)  
+FROM HOADON
+WHERE YEAR(NGHD)=2006)
+--26.	Tìm họ tên khách hàng đã mua hóa đơn có trị giá cao nhất trong năm 2006.
+SELECT HOTEN
+FROM KHACHHANG
+WHERE MAKH IN(
+SELECT MAKH
+FROM HOADON
+WHERE SOHD IN(
+SELECT SOHD
+FROM HOADON
+WHERE TRIGIA=(
+SELECT MAX(TRIGIA)  
+FROM HOADON
+WHERE YEAR(NGHD)=2006)))
+--27.	In ra danh sách 3 khách hàng đầu tiên (MAKH, HOTEN) sắp xếp theo doanh số giảm dần.
+SELECT TOP(3) MAKH, HOTEN 
+FROM KHACHHANG
+ORDER BY DOANHSO DESC
+--28.	In ra danh sách các sản phẩm (MASP, TENSP) có giá bán bằng 1 trong 3 mức giá cao nhất.
+SELECT MASP, TENSP
+FROM SANPHAM
+WHERE GIA IN(
+SELECT DISTINCT TOP 3 GIA
+FROM SANPHAM
+ORDER BY GIA DESC)
+--29.	In ra danh sách các sản phẩm (MASP, TENSP) do “Thai Lan” sản xuất có giá bằng 1 trong 3 mức giá cao nhất (của tất cả các sản phẩm).
+SELECT MASP, TENSP
+FROM SANPHAM
+WHERE NUOCSX='Thai Lan' AND GIA IN(
+SELECT DISTINCT TOP 3 GIA
+FROM SANPHAM
+ORDER BY GIA DESC)
+--30.	In ra danh sách các sản phẩm (MASP, TENSP) do “Trung Quoc” sản xuất có giá bằng 1 trong 3 mức giá cao nhất (của sản phẩm do “Trung Quoc” sản xuất).
+SELECT MASP, TENSP
+FROM SANPHAM
+WHERE GIA IN(
+SELECT DISTINCT TOP 3 GIA
+FROM SANPHAM
+WHERE NUOCSX='Trung Quoc'
+ORDER BY GIA DESC)
+--31.	* In ra danh sách khách hàng nằm trong 3 hạng cao nhất (xếp hạng theo doanh số).
+--32.	Tính tổng số sản phẩm do “Trung Quoc” sản xuất.
+SELECT COUNT(MASP)
+FROM SANPHAM
+WHERE NUOCSX='Trung Quoc'
+--33.	Tính tổng số sản phẩm của từng nước sản xuất.
+SELECT NUOCSX AS COUNTRY, COUNT(MASP) AS SumOfProduct
+FROM SANPHAM
+GROUP BY NUOCSX
+--34.	Với từng nước sản xuất, tìm giá bán cao nhất, thấp nhất, trung bình của các sản phẩm.
+SELECT NUOCSX AS COUNTRY, MAX(GIA) AS MAXPRICE, MIN(GIA) AS MAXPRICE,MIN(GIA) AS AVGPRICE
+FROM SANPHAM
+GROUP BY NUOCSX
+--35.	Tính doanh thu bán hàng mỗi ngày.
+SELECT NGHD AS NGAY, SUM(TRIGIA) AS DOANHTHU
+FROM HOADON
+GROUP BY NGHD
+--36.	Tính tổng số lượng của từng sản phẩm bán ra trong tháng 10/2006.
+SELECT MASP, SUM(SL) AS QUANTITY
+FROM CTHD JOIN HOADON
+ON CTHD.SOHD=HOADON.SOHD
+WHERE YEAR(NGHD)=2006 AND MONTH (NGHD)=10
+GROUP BY MASP
+--37.	Tính doanh thu bán hàng của từng tháng trong năm 2006.
+SELECT MONTH (NGHD) AS THANG, SUM(TRIGIA) AS DOANHTHU
+FROM  HOADON
+WHERE YEAR(NGHD)=2006
+GROUP BY MONTH (NGHD)
+--38.	Tìm hóa đơn có mua ít nhất 4 sản phẩm khác nhau.
+SELECT SOHD 
+FROM CTHD 
+GROUP BY SOHD
+HAVING COUNT(MASP)>=4
+--39.	Tìm hóa đơn có mua 3 sản phẩm do “Viet Nam” sản xuất (3 sản phẩm khác nhau).
+SELECT SOHD 
+FROM CTHD JOIN SANPHAM
+ON CTHD.MASP=SANPHAM.MASP
+WHERE NUOCSX='Viet Nam'
+GROUP BY SOHD
+HAVING COUNT(DISTINCT CTHD.MASP)=3
+--40.	Tìm khách hàng (MAKH, HOTEN) có số lần mua hàng nhiều nhất. 
+SELECT MAKH, HOTEN FROM (
+	SELECT HD.MAKH, HOTEN, RANK() OVER (ORDER BY COUNT(HD.MAKH) DESC) RANK_SOLAN 
+	FROM HOADON HD  JOIN KHACHHANG KH 
+	ON HD.MAKH = KH.MAKH
+	GROUP BY HD.MAKH, HOTEN
+) A
+WHERE RANK_SOLAN = 1
+GO
+--41.	Tháng mấy trong năm 2006, doanh số bán hàng cao nhất ?
+SELECT TOP 1 WITH TIES MONTH(NGHD)
+FROM HOADON
+WHERE YEAR(NGHD) = 2006
+GROUP BY MONTH(NGHD)
+ORDER BY SUM(TRIGIA) DESC
+--42.	Tìm sản phẩm (MASP, TENSP) có tổng số lượng bán ra thấp nhất trong năm 2006.
+SELECT A.MASP, TENSP FROM(
+	SELECT CTHD.MASP, RANK() OVER (ORDER BY SUM(SL) ASC) RANK_SL 
+	FROM  CTHD JOIN HOADON
+	ON HOADON.SOHD=CTHD.SOHD
+	GROUP BY CTHD.MASP
+) A JOIN SANPHAM
+ON A.MASP=SANPHAM.MASP
+WHERE RANK_SL=1
+--43.	*Mỗi nước sản xuất, tìm sản phẩm (MASP,TENSP) có giá bán cao nhất.
+SELECT NUOCSX, MASP, TENSP FROM (
+	SELECT NUOCSX, MASP, TENSP, GIA, RANK() OVER (PARTITION BY NUOCSX ORDER BY GIA DESC) RANK_GIA FROM SANPHAM
+) A 
+WHERE RANK_GIA = 1
+--44.	Tìm nước sản xuất sản xuất ít nhất 3 sản phẩm có giá bán khác nhau.
+SELECT NUOCSX FROM SANPHAM 
+GROUP BY NUOCSX
+HAVING COUNT(DISTINCT GIA) >= 3
+--45.	*Trong 10 khách hàng có doanh số cao nhất, tìm khách hàng có số lần mua hàng nhiều nhất
+SELECT MAKH, HOTEN
+FROM KHACHHANG
+WHERE MAKH IN(
+(SELECT TOP(10) MAKH
+FROM KHACHHANG
+ORDER BY DOANHSO DESC)) AND MAKH=(
+SELECT TOP (1) MAKH
+FROM HOADON
+GROUP BY MAKH
+ORDER BY COUNT(SOHD) DESC
+)
